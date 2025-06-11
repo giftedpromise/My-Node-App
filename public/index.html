@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AWS EC2 Node.js App</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+      }
+
+      .main {
+        padding: 30px;
+      }
+
+      .section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border-left: 4px solid #667eea;
+      }
+
+      .section h2 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 1.5rem;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+      }
+
+      .info-card {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+      }
+
+      .info-card h3 {
+        color: #667eea;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+      }
+
+      .info-card p {
+        color: #333;
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+
+      .message-form {
+        display: grid;
+        gap: 15px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .form-group label {
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      .form-group input,
+      .form-group textarea {
+        padding: 12px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+      }
+
+      .form-group input:focus,
+      .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .messages-list {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .message-item {
+        background: white;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        border-left: 3px solid #667eea;
+      }
+
+      .message-item h4 {
+        color: #333;
+        margin-bottom: 5px;
+      }
+
+      .message-item p {
+        color: #666;
+        margin-bottom: 5px;
+      }
+
+      .message-item small {
+        color: #999;
+        font-size: 0.8rem;
+      }
+
+      .loading {
+        text-align: center;
+        color: #667eea;
+        font-style: italic;
+      }
+
+      @media (max-width: 600px) {
+        .header h1 {
+          font-size: 2rem;
+        }
+
+        .main {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🚀 AWS EC2 Node.js App</h1>
+        <p>Running on Amazon EC2 with Express.js</p>
+      </div>
+
+      <div class="main">
+        <div class="section">
+          <h2>📊 Server Information</h2>
+          <div id="server-info" class="info-grid">
+            <div class="loading">Loading server info...</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>💬 Leave a Message</h2>
+          <form id="message-form" class="message-form">
+            <div class="form-group">
+              <label for="name">Your Name:</label>
+              <input type="text" id="name" name="name" required />
+            </div>
+            <div class="form-group">
+              <label for="message">Message:</label>
+              <textarea
+                id="message"
+                name="message"
+                rows="3"
+                required
+              ></textarea>
+            </div>
+            <button type="submit" class="btn">Send Message</button>
+          </form>
+        </div>
+
+        <div class="section">
+          <h2>📝 Recent Messages</h2>
+          <div id="messages-list" class="messages-list">
+            <div class="loading">Loading messages...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Load server information
+      async function loadServerInfo() {
+        try {
+          const response = await fetch("/api/info");
+          const data = await response.json();
+
+          const serverInfoDiv = document.getElementById("server-info");
+          serverInfoDiv.innerHTML = `
+                    <div class="info-card">
+                        <h3>Hostname</h3>
+                        <p>${data.hostname}</p>
+                    </div>
+                    <div class="info-card">
+                        <h3>Platform</h3>
+                        <p>${data.platform}</p>
+                    </div>
+                    <div class="info-card">
+                        <h3>Visitors</h3>
+                        <p>${data.visitors}</p>
+                    </div>
+                    <div class="info-card">
+                        <h3>Server Uptime</h3>
+                        <p>${Math.floor(data.uptime / 3600)}h ${Math.floor(
+            (data.uptime % 3600) / 60
+          )}m</p>
+                    </div>
+                `;
+        } catch (error) {
+          console.error("Error loading server info:", error);
+          document.getElementById("server-info").innerHTML =
+            '<div class="error">Failed to load server info</div>';
+        }
+      }
+
+      // Load messages
+      async function loadMessages() {
+        try {
+          const response = await fetch("/api/messages");
+          const messages = await response.json();
+
+          const messagesDiv = document.getElementById("messages-list");
+
+          if (messages.length === 0) {
+            messagesDiv.innerHTML =
+              '<div class="loading">No messages yet. Be the first to leave one!</div>';
+            return;
+          }
+
+          messagesDiv.innerHTML = messages
+            .map(
+              (msg) => `
+                    <div class="message-item">
+                        <h4>${msg.name}</h4>
+                        <p>${msg.message}</p>
+                        <small>${new Date(
+                          msg.timestamp
+                        ).toLocaleString()}</small>
+                    </div>
+                `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error loading messages:", error);
+          document.getElementById("messages-list").innerHTML =
+            '<div class="error">Failed to load messages</div>';
+        }
+      }
+
+      // Handle form submission
+      document
+        .getElementById("message-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const formData = new FormData(e.target);
+          const messageData = {
+            name: formData.get("name"),
+            message: formData.get("message"),
+          };
+
+          try {
+            const response = await fetch("/api/messages", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(messageData),
+            });
+
+            if (response.ok) {
+              e.target.reset();
+              loadMessages(); // Reload messages
+              loadServerInfo(); // Reload server info to update visitor count
+            } else {
+              alert("Failed to send message");
+            }
+          } catch (error) {
+            console.error("Error sending message:", error);
+            alert("Failed to send message");
+          }
+        });
+
+      // Load data on page load
+      loadServerInfo();
+      loadMessages();
+
+      // Auto-refresh data every 30 seconds
+      setInterval(() => {
+        loadServerInfo();
+        loadMessages();
+      }, 30000);
+    </script>
+  </body>
+</html>
